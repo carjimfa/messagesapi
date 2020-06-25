@@ -56,8 +56,7 @@ namespace MessagesApi.Services
             {
                 Username = username
             };
-            _context.Add(newUser);
-            await _context.SaveChangesAsync();
+            _context.Users.Add(newUser);
             return newUser;
         }
     }

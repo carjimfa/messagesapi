@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.WebSockets;
+using System.Threading;
 using System.Threading.Tasks;
 using MessagesApi.Data;
 using MessagesApi.Services;
 using MessagesApi.Services.Interfaces;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +17,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
 
 namespace MessagesApi
@@ -35,12 +39,29 @@ namespace MessagesApi
                 options.EnableEndpointRouting = false;
             }).AddNewtonsoftJson(opt => opt.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore);;
             
-            services.AddScoped<IUsersService, UsersService>();
-            services.AddScoped<IMessagesService, MessagesService>();
+            services.AddSingleton<IUsersService, UsersService>();
+            services.AddSingleton<IMessagesService, MessagesService>();
+            services.AddSingleton<MessagesApiWebSocketService>();
+            services.AddSingleton<MessagesApiContext>();
 
-            services.AddDbContext<MessagesApiContext>(options =>
+            // services.AddDbContext<MessagesApiContext>(options =>
+            // {
+            //     options.UseInMemoryDatabase("messages-api");
+            // });
+            
+            services.AddSwaggerGen(swagger =>
             {
-                options.UseInMemoryDatabase("messages-api");
+                swagger.SwaggerDoc("v1", new OpenApiInfo { Title = "Messages API" });
+            });
+            
+            services.AddSwaggerGenNewtonsoftSupport();
+            
+            services.AddCors(options =>
+            {
+                options.AddPolicy("CorsPolicy",
+                    builder => builder.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
             });
 
         }
@@ -53,6 +74,8 @@ namespace MessagesApi
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseCors("CorsPolicy");
+            
             app.UseHttpsRedirection();
 
             app.UseRouting();
@@ -63,6 +86,52 @@ namespace MessagesApi
             {
                 endpoints.MapControllers();
             });
+            
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Messages API");
+            });
+            
+            app.UseWebSockets();
+            
+            app.Use(async (context, next) =>
+            {
+                if (context.Request.Path == "/ws")
+                {
+                    if (context.WebSockets.IsWebSocketRequest)
+                    {
+                        WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                        var socketService = (MessagesApiWebSocketService)app.ApplicationServices.GetService(typeof(MessagesApiWebSocketService));
+                        await socketService.AddUser(webSocket);
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = 400;
+                    }
+                }
+                else
+                {
+                    await next();
+                }
+
+            });
+            
+
+
+        }
+        
+        private async Task Echo(HttpContext context, WebSocket webSocket)
+        {
+            var buffer = new byte[1024 * 4];
+            WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            while (!result.CloseStatus.HasValue)
+            {
+                await webSocket.SendAsync(new ArraySegment<byte>(buffer, 0, result.Count), result.MessageType, result.EndOfMessage, CancellationToken.None);
+
+                result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            }
+            await webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
         }
     }
 }

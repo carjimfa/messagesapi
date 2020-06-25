@@ -4,16 +4,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MessagesApi.Data
 {
-    public class MessagesApiContext:DbContext
+    public class MessagesApiContext
     {
-        public MessagesApiContext(DbContextOptions<MessagesApiContext> options)
-            : base(options)
+        public MessagesApiContext()
         {
-            
+            Messages=new List<Message>();
+            Users=new List<User>();
         }
 
-        public DbSet<Message> Messages { get; set; }
-        public DbSet<User> Users { get; set; }
+        public List<Message> Messages { get; set; }
+        public List<User> Users { get; set; }
 
     }
 }

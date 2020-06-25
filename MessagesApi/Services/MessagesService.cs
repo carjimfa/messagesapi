@@ -14,14 +14,14 @@ namespace MessagesApi.Services
     {
         private readonly MessagesApiContext _context;
         private readonly IUsersService _usersService;
-        
+
         public MessagesService(MessagesApiContext context,
             IUsersService usersService)
         {
-            _context = context;
             _usersService = usersService;
+            _context = context;
         }
-        
+
         public async Task<Message> PostNewMessage(PostMessageRequestDto dto)
         {
             if (await _usersService.UserExists(dto.UserId))
@@ -29,10 +29,10 @@ namespace MessagesApi.Services
                 var newMessage = new Message()
                 {
                     Content = dto.Content,
-                    UserId = dto.UserId
+                    UserId = dto.UserId,
+                    User = (await _usersService.GetAll()).First(u=>u.Id==dto.UserId)
                 };
                 _context.Messages.Add(newMessage);
-                await _context.SaveChangesAsync();
                 return newMessage;
             }
             throw new NotFoundException("User with that id not found");
