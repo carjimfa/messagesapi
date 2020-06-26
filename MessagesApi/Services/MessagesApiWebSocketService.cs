@@ -15,26 +15,21 @@ namespace MessagesApi.Services
     {
         private Dictionary<Guid, WebSocket> _usersSockets = new Dictionary<Guid, WebSocket>();
         private readonly IMessagesService _messagesService;
-        private readonly IUsersService _usersService;
 
-        public MessagesApiWebSocketService(IMessagesService messagesService,
-            IUsersService usersService)
+        public MessagesApiWebSocketService(IMessagesService messagesService)
         {
             _messagesService = messagesService;
-            _usersService = usersService;
         }
 
-        public async Task AddUser(WebSocket socket)
+        public async Task AddUserSocket(WebSocket socket)
         {
             try
             {
                 var userConnectedId = Guid.NewGuid();
-
                 _usersSockets.Add(userConnectedId, socket);
                 SendSocketUserInfo(socket, userConnectedId);
                 AnnounceNewUser(userConnectedId).Wait();
-                SendMessages(socket).Wait();
-
+                SendMessagesToSingleSocket(socket).Wait();
                 while (socket.State == WebSocketState.Open)
                 {
                     var buffer = new byte[1024 * 4];
@@ -53,9 +48,6 @@ namespace MessagesApi.Services
                     {
                         Console.WriteLine(bufferAsString);
                         await HandleNewMessage(bufferAsString);
-                        //LOGIN AND MESSAGES HERE
-                        // var changeRequest = SquareChangeRequest.FromJson(bufferAsString);
-                        // await HandleSquareChangeRequest(changeRequest);
                     }
                 }
 
@@ -78,7 +70,7 @@ namespace MessagesApi.Services
                 Content = newMessage,
                 Type = MessageType.NewMessage
             };
-            await SendAll(JsonConvert.SerializeObject(socketMessageResponseDto));
+            await SendToAllSockets(JsonConvert.SerializeObject(socketMessageResponseDto));
         }
 
         private void SendSocketUserInfo(WebSocket socket, Guid userConnectedId)
@@ -90,10 +82,10 @@ namespace MessagesApi.Services
             };
 
             var connectedUserInfoPayload = JsonConvert.SerializeObject(connectedUserResponse);
-            Send(connectedUserInfoPayload, socket);
+            SendToSocket(connectedUserInfoPayload, socket);
         }
 
-        private async Task SendMessages(WebSocket socket)
+        private async Task SendMessagesToSingleSocket(WebSocket socket)
         {
             var messages = (await _messagesService.GetAll()).ToList();
             if (messages.Any())
@@ -103,7 +95,7 @@ namespace MessagesApi.Services
                     Content = messages,
                     Type = MessageType.AllMessages
                 }; 
-                await Send(JsonConvert.SerializeObject(response), socket);
+                await SendToSocket(JsonConvert.SerializeObject(response), socket);
             }
 
         }
@@ -115,20 +107,20 @@ namespace MessagesApi.Services
                 Type = MessageType.UserConnected,
                 Content = userId.ToString()
             };
-            await SendAll(JsonConvert.SerializeObject(message));
+            await SendToAllSockets(JsonConvert.SerializeObject(message));
         }
         
-        private async Task SendAll(string message)
+        private async Task SendToAllSockets(string content)
         {
-            await Send(message, _usersSockets.Values.ToArray());
+            await SendToSocket(content, _usersSockets.Values.ToArray());
         }
         
-        private async Task Send(string message, params WebSocket[] socketsToSendTo)
+        private async Task SendToSocket(string content, params WebSocket[] socketsToSendTo)
         {
             var sockets = socketsToSendTo.Where(s => s.State == WebSocketState.Open);
             foreach (var theSocket in sockets)
             {
-                var stringAsBytes = System.Text.Encoding.ASCII.GetBytes(message);
+                var stringAsBytes = System.Text.Encoding.ASCII.GetBytes(content);
                 var byteArraySegment = new ArraySegment<byte>(stringAsBytes, 0, stringAsBytes.Length);
                 await theSocket.SendAsync(byteArraySegment, WebSocketMessageType.Text, true, CancellationToken.None);
             }

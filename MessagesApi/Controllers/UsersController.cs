@@ -16,7 +16,6 @@ namespace MessagesApi.Controllers
             _usersService = usersService;
         }
 
-
         [HttpPost]
         [Route("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)

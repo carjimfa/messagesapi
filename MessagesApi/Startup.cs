@@ -44,6 +44,8 @@ namespace MessagesApi
             services.AddSingleton<MessagesApiWebSocketService>();
             services.AddSingleton<MessagesApiContext>();
 
+            //TODO: Add DbContext to persist everything on database instead of in-memory
+            
             // services.AddDbContext<MessagesApiContext>(options =>
             // {
             //     options.UseInMemoryDatabase("messages-api");
@@ -103,7 +105,7 @@ namespace MessagesApi
                     {
                         WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
                         var socketService = (MessagesApiWebSocketService)app.ApplicationServices.GetService(typeof(MessagesApiWebSocketService));
-                        await socketService.AddUser(webSocket);
+                        await socketService.AddUserSocket(webSocket);
                     }
                     else
                     {
@@ -116,9 +118,6 @@ namespace MessagesApi
                 }
 
             });
-            
-
-
         }
         
         private async Task Echo(HttpContext context, WebSocket webSocket)
