@@ -11,12 +11,12 @@ using Newtonsoft.Json;
 
 namespace MessagesApi.Services
 {
-    public class MessagesApiWebSocketService
+    public class WebSocketService
     {
         private Dictionary<Guid, WebSocket> _usersSockets = new Dictionary<Guid, WebSocket>();
         private readonly IMessagesService _messagesService;
 
-        public MessagesApiWebSocketService(IMessagesService messagesService)
+        public WebSocketService(IMessagesService messagesService)
         {
             _messagesService = messagesService;
         }
