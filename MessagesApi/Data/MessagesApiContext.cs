@@ -8,8 +8,9 @@ namespace MessagesApi.Data
     {
         public MessagesApiContext()
         {
-            Messages=new List<Message>();
+            //TODO Add initial user and messages
             Users=new List<User>();
+            Messages = new List<Message>();
         }
 
         public List<Message> Messages { get; set; }

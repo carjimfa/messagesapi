@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Newtonsoft.Json;
 
 namespace MessagesApi.Dtos
 {
@@ -6,6 +7,7 @@ namespace MessagesApi.Dtos
     {
         [Required]
         [MinLength(6)]
+        [JsonProperty(PropertyName = "username")]
         public string Username { get; set; }
     }
 }

@@ -28,12 +28,6 @@ namespace MessagesApi.Controllers
 
             return BadRequest(ModelState);
         }
-        
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-        {
-            return Ok(await _usersService.GetAll());
-        }
-        
+
     }
 }

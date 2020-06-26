@@ -1,8 +1,12 @@
+using Newtonsoft.Json;
+
 namespace MessagesApi.Dtos
 {
     public class SocketMessageResponseDto<T>
     {
+        [JsonProperty(PropertyName = "type")]
         public MessageType Type { get; set; }
+        [JsonProperty(PropertyName = "content")]
         public T Content { get; set; }
     }
 
